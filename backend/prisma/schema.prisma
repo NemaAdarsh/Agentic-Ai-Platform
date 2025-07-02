@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agents    Agent[]
+  sessions  Session[]
+  apiKeys   ApiKey[]
+
+  @@map("users")
+}
+
+model Agent {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  type        AgentType
+  status      AgentStatus @default(IDLE)
+  config      Json        @default("{}")
+  metadata    Json        @default("{}")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  executions AgentExecution[]
+  tasks      Task[]
+
+  @@map("agents")
+}
+
+model AgentExecution {
+  id        String            @id @default(uuid())
+  status    ExecutionStatus   @default(PENDING)
+  input     Json
+  output    Json?
+  error     String?
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime          @default(now())
+
+  agentId String
+  agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("agent_executions")
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  status      TaskStatus @default(PENDING)
+  priority    Int        @default(1)
+  input       Json
+  output      Json?
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  agentId String?
+  agent   Agent?  @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@map("tasks")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  name      String
+  key       String   @unique
+  isActive  Boolean  @default(true)
+  lastUsed  DateTime?
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AgentType {
+  GENERATIVE_AI
+  AUTOMATION
+  HYPERVISOR
+  WORKFLOW
+  DATA_PROCESSING
+  MONITORING
+  CUSTOM
+}
+
+enum AgentStatus {
+  IDLE
+  RUNNING
+  PAUSED
+  ERROR
+  STOPPED
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
